@@ -1,0 +1,44 @@
+services:
+  php:
+    container_name: wpl-shared-advert-library-php
+    image: ghcr.io/m0lnardaniel/php-7.4-apache
+    restart: always
+    ports:
+      - "8040:80"
+    volumes:
+#      - ~/Development/webplus/vendor:/var/www/vendor/
+      - ./src:/var/www/html/
+      - ./src/env.local.php:/var/www/html/env.php
+      - ./docker/php.ini:/usr/local/etc/php/php.ini
+    links:
+      - mysql
+    depends_on:
+      - mysql
+    networks:
+      - webplus
+
+  mysql:
+    container_name: wpl-shared-advert-library-mysql
+    image: mariadb:latest
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=app
+      - MYSQL_DATABASE=app
+      - MYSQL_USER=app
+      - MYSQL_PASSWORD=app
+    volumes:
+      - ~/Development/.databases/wpl-shared-advert-library:/var/www/database
+      - ./docker/mysql.cnf:/etc/mysql/conf.d/mysql.cnf
+      - ./db/mysqldump.sql:/docker-entrypoint-initdb.d/mysqldump.sql
+    networks:
+      - webplus
+
+networks:
+  webplus:
+    name: webplus
+    external: false
+  tauri:
+    name: tauri
+    external: true
