@@ -1,6 +1,5 @@
 <?php
 
-print '<pre>';
 require_once 'bootstrap.php';
 $app = new bootstrap();
 
