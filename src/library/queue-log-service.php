@@ -33,6 +33,7 @@ class QueueLogService {
     $stmt->execute([
       'site_id' => $this->job->site_id,
       'advert_id' => $this->job->advert_id,
+      'action' => $this->job->action,
       'targets' => $this->targets,
       'status' => $status,
       'duration' => microtime(true) - $this->startedAtMicrotime,

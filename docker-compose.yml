@@ -4,9 +4,8 @@ services:
     image: ghcr.io/m0lnardaniel/php-7.4-apache
     restart: always
     ports:
-      - "8041:80"
+      - "8040:80"
     volumes:
-#      - ~/Development/webplus/vendor:/var/www/vendor/
       - ./src:/var/www/html/
       - ./src/env.local.php:/var/www/html/env.php
       - ./docker/php.ini:/usr/local/etc/php/php.ini
@@ -22,7 +21,7 @@ services:
     image: mariadb:latest
     restart: always
     ports:
-      - "3307:3306"
+      - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=app
       - MYSQL_DATABASE=app

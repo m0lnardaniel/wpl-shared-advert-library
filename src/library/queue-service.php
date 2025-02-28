@@ -16,6 +16,17 @@ class QueueService {
     return $stmt->fetchColumn();
   }
 
+  public function addJob(string $siteId, int $advertId, string $action, array $data = null) {
+    $cmd = "INSERT INTO `queue_jobs` (`site_id`, `advert_id`, `action`, `data`, `created_at`) VALUES (:site_id, :advert_id, :action, :data, NOW())";
+    $stmt = $this->pdo->prepare($cmd);
+    $stmt->execute([
+      'site_id' => $siteId,
+      'advert_id' => $advertId,
+      'action' => $action,
+      'data' => json_encode($data)
+    ]);
+  }
+
   public function getJobs(): PDOStatement {
     $stmt = $this->pdo->query("SELECT * FROM `queue_jobs` ORDER BY `id` LIMIT " . $this->config['batch-size']);
     $stmt->setFetchMode(PDO::FETCH_CLASS, QueueJob::class);
