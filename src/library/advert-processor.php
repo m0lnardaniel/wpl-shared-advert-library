@@ -2,14 +2,14 @@
 
 class AdvertProcessor {
   private PDO $pdo;
-  private LogService $logService;
+  private QueueErrorService $queueErrorService;
   private QueueLogService $queueLogService;
   private QueueJob $job;
 
   public function __construct(PDO $pdo, QueueJob $job) {
     $this->pdo = $pdo;
     $this->job = $job;
-    $this->logService = new LogService($pdo, $job);
+    $this->queueErrorService = new QueueErrorService($pdo, $job);
     $this->queueLogService = new QueueLogService($pdo, $job);
   }
 
@@ -36,7 +36,7 @@ class AdvertProcessor {
       $this->queueLogService->done();
       return true;
     } catch (Exception $e) {
-      $this->logService->add($e);
+      $this->queueErrorService->add($e);
       $this->queueLogService->failed();
       return false;
     }
@@ -100,7 +100,7 @@ class AdvertProcessor {
           }
         }
       } catch (Exception $e) {
-        $this->logService->add($e);
+        $this->queueErrorService->add($e);
       }
     }
   }
@@ -112,11 +112,11 @@ class AdvertProcessor {
     // Delete the advert from the target sites
     foreach ($targetSites as $targetSite) {
       try {
-        $cmd = sprintf("DELETE FROM `%s`.`advert` WHERE remote_site=:site AND remote_id=:id", $targetSite->db_table);
+        $cmd = sprintf("DELETE FROM `%s`.`advert` WHERE `remote_site`=:site AND `remote_id`=:id", $targetSite->db_table);
         $stmt = $this->pdo->prepare($cmd);
-        $stmt->execute(['site' => $targetSite->name, 'id' => $advertId]);
+        $stmt->execute(['site' => $site->name, 'id' => $advertId]);
       } catch (Exception $e) {
-        $this->logService->add($e);
+        $this->queueErrorService->add($e);
       }
     }
   }

@@ -1,6 +1,6 @@
 <?php
 
-class LogService {
+class QueueErrorService {
   private PDO $pdo;
 
   private QueueJob $job;
@@ -12,7 +12,7 @@ class LogService {
 
   public function add(Exception $exception): void {
     $cmd =
-      'INSERT INTO `logs` (`message`, `payload`, `request`, `created_at`) VALUES (:message, :payload, :request, NOW())';
+      'INSERT INTO `queue_errors` (`message`, `payload`, `request`, `created_at`) VALUES (:message, :payload, :request, NOW())';
     $stmt = $this->pdo->prepare($cmd);
     $stmt->execute([
       'message' => $exception->getMessage(),

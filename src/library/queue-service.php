@@ -2,9 +2,11 @@
 
 class QueueService {
   private PDO $pdo;
+  private array $config;
 
-  public function __construct(PDO $pdo) {
+  public function __construct(PDO $pdo, array $config) {
     $this->pdo = $pdo;
+    $this->config = $config;
   }
 
   // get how many jobs are in the queue
@@ -13,13 +15,17 @@ class QueueService {
     $stmt->execute();
     return $stmt->fetchColumn();
   }
+
   public function getJobs(): PDOStatement {
-    $stmt = $this->pdo->query("SELECT * FROM `queue_jobs` ORDER BY `id` LIMIT 100");
+    $stmt = $this->pdo->query("SELECT * FROM `queue_jobs` ORDER BY `id` LIMIT " . $this->config['batch-size']);
     $stmt->setFetchMode(PDO::FETCH_CLASS, QueueJob::class);
     return $stmt;
   }
 
   public function finishJob(QueueJob $job) {
+    if ($this->config['dry-run'] === true)
+      return;
+
     $stmt = $this->pdo->prepare("DELETE FROM `queue_jobs` WHERE `id` = :id");
     $stmt->execute(['id' => $job->id]);
   }

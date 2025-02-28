@@ -1,6 +1,6 @@
 <?php
 
-require_once 'bootstrap.php';
+require_once dirname(__FILE__) . '/library/bootstrap.php';
 $app = new bootstrap();
 
 // Check if the queue is locked
@@ -25,7 +25,7 @@ while ($job = $statement->fetch()) {
   $advertProcessor->run();
 
   // Finish the job
-   $app->getQueueService()->finishJob($job);
+  $app->getQueueService()->finishJob($job);
 }
 
 // Unlock the queue

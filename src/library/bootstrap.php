@@ -5,6 +5,8 @@ class bootstrap {
   private QueueService $queueService;
   private array $env = [];
 
+  private string $path;
+
   public function __construct() {
     $this->loadEnvironmentVariables();
     $this->initDatabase();
@@ -39,7 +41,7 @@ class bootstrap {
   }
 
   private function loadEnvironmentVariables() {
-    $this->env = require_once 'env.local.php';
+    $this->env = require_once dirname(__FILE__) . '/../env.php';
   }
 
   private function initDatabase() {
@@ -59,13 +61,13 @@ class bootstrap {
   }
 
   private function initQueueService() {
-    require_once 'queue-service.php';
-    $this->queueService = new QueueService($this->pdo);
+    require_once dirname(__FILE__) . '/queue-service.php';
+    $this->queueService = new QueueService($this->pdo, $this->env('queue'));
   }
 
   private function initAdvertService() {
-    require_once 'advert-processor.php';
-    require_once 'log-service.php';
-    require_once 'queue-log-service.php';
+    require_once dirname(__FILE__) . '/advert-processor.php';
+    require_once dirname(__FILE__) . '/queue-error-service.php';
+    require_once dirname(__FILE__) . '/queue-log-service.php';
   }
 }
