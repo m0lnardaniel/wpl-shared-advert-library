@@ -2,13 +2,67 @@
 
 class advert_api {
   /**
-   * Collect Data
+   * @param int $advertId
    *
-   * @param [int] $advertId
+   * @return bool
+   */
+  static function sync(int $advertId): bool {
+    $data = self::collectData($advertId);
+    if (sizeof($data) == 0)
+      return false;
+
+    return self::addJobToQueue($advertId, 'sync', $data);
+  }
+
+  /**
+   * @param int $advertId
+   *
+   * @return bool
+   */
+  static function syncDelete(int $advertId): bool {
+    return self::addJobToQueue($advertId, 'delete', null);
+  }
+
+
+  /**
+   * @param int $advertId
+   * @param string $action
+   * @param array|null $data
+   *
+   * @return bool
+   */
+  private static function addJobToQueue(int $advertId, string $action, array $data = null): bool {
+    if (env('advert-sharing') !== true)
+      return false;
+
+    try {
+      $file = (env('advert-queue-file'))
+        ?: LIBRARY . '../shared-advert-library/import.php';
+
+      if (!file_exists($file))
+        return false;
+
+      $queueService = require_once $file;
+      if (is_object($queueService) === false)
+        return false;
+
+      if (is_callable([$queueService, 'addJob']) === false)
+        return false;
+
+      $queueService->addJob(env('advert-site-id'), $advertId, $action, $data);
+
+      return true;
+    } catch (Exception $e) {
+      return false;
+    }
+  }
+
+  /**
+   * @param int $advertId
    *
    * @return array
    */
-  static function collectData($advertId): array {
+  static private function collectData(int $advertId): array {
     $response = [];
     $q = db_query("SELECT * FROM `advert` WHERE `advert_id`='$advertId' LIMIT 1");
     $advert = db_result($q);
@@ -32,56 +86,6 @@ class advert_api {
     }
 
     return $response;
-  }
-
-  /**
-   * @param int $advertId
-   *
-   * @return bool|string
-   */
-  static function sync(int $advertId): bool {
-    $data = self::collectData($advertId);
-    if (sizeof($data) == 0)
-      return false;
-
-    return self::addJobToQueue($advertId, 'sync', $data);
-  }
-
-
-  /**
-   * @param int $advertId
-   *
-   * @return bool
-   */
-  static function syncDelete(int $advertId): bool {
-    return self::addJobToQueue($advertId, 'delete', null);
-  }
-
-  /**
-   * @param int $advertId
-   * @param string $action
-   * @param array|null $data
-   *
-   * @return bool
-   */
-  private static function addJobToQueue(int $advertId, string $action, array $data = null): bool {
-    if (env('advert-sharing') !== true)
-      return false;
-
-    try {
-      $file = (env('advert-queue-file'))
-        ?: LIBRARY . '../shared-advert-library/import.php';
-
-      if (!file_exists($file))
-        return false;
-
-      $queueService = require_once $file;
-      $queueService->addJob(env('advert-site-id'), $advertId, $action, $data);
-
-      return true;
-    } catch (Exception $e) {
-      return false;
-    }
   }
 }
 
