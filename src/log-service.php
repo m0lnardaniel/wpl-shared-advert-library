@@ -3,14 +3,11 @@
 class LogService {
   private PDO $pdo;
 
-  private ?object $request = null;
+  private QueueJob $job;
 
-  public function __construct(PDO $pdo) {
+  public function __construct(PDO $pdo, QueueJob $job) {
     $this->pdo = $pdo;
-  }
-
-  public function setRequest(object $request): void {
-    $this->request = $request;
+    $this->job = $job;
   }
 
   public function add(Exception $exception): void {
@@ -23,7 +20,7 @@ class LogService {
         'file' => $exception->getFile(),
         'line' => $exception->getLine()
       ]),
-      'request' => json_encode($this->request),
+      'request' => json_encode($this->job),
     ]);
   }
 }

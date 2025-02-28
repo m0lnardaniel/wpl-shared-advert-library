@@ -14,7 +14,7 @@ class QueueService {
     return $stmt->fetchColumn();
   }
   public function getJobs(): PDOStatement {
-    $stmt = $this->pdo->query("SELECT * FROM `queue_jobs` ORDER BY `id` LIMIT 500");
+    $stmt = $this->pdo->query("SELECT * FROM `queue_jobs` ORDER BY `id` LIMIT 100");
     $stmt->setFetchMode(PDO::FETCH_CLASS, QueueJob::class);
     return $stmt;
   }

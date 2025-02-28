@@ -1,23 +1,22 @@
 <?php
 
-class AdvertService {
+class AdvertProcessor {
   private PDO $pdo;
   private LogService $logService;
+  private QueueLogService $queueLogService;
+  private QueueJob $job;
 
-  public function __construct(PDO $pdo) {
+  public function __construct(PDO $pdo, QueueJob $job) {
     $this->pdo = $pdo;
-
-    require_once 'log-service.php';
-    $this->logService = new LogService($pdo);
+    $this->job = $job;
+    $this->logService = new LogService($pdo, $job);
+    $this->queueLogService = new QueueLogService($pdo, $job);
   }
 
-  public function processJob(QueueJob $job): bool {
+  public function run(): bool {
     try {
-      // Set the request for the log service
-      $this->logService->setRequest($job);
-
       // Find the site
-      $site = $this->findSiteByName($job->site_id);
+      $site = $this->findSiteByName($this->job->site_id);
       // Find the target sites
       $targetSites = $this->getTargetSites($site);
 
@@ -26,17 +25,19 @@ class AdvertService {
         throw new Exception('No target sites found');
       }
 
-      if ($job->action === 'delete') {
-        $this->runDeletion($site, $job->advert_id, $targetSites);
+      if ($this->job->action === 'delete') {
+        $this->runDeletion($site, $this->job->advert_id, $targetSites);
       }
-      else if ($job->action === 'sync') {
-        $advert = new Advert($site, $job->advert_id, $job);
+      else if ($this->job->action === 'sync') {
+        $advert = new Advert($site, $this->job->advert_id, $this->job);
         $this->runSynchronization($advert, $targetSites);
       }
 
+      $this->queueLogService->done();
       return true;
     } catch (Exception $e) {
       $this->logService->add($e);
+      $this->queueLogService->failed();
       return false;
     }
   }
@@ -62,6 +63,10 @@ class AdvertService {
       throw new Exception('No target sites found');
     }
 
+    // Set the number of targets
+    $this->queueLogService->setTargets(sizeof($targetSites));
+
+    /** @var Site $targetSite */
     foreach ($targetSites as $targetSite) {
       try {
         // Prepare the data
@@ -101,6 +106,10 @@ class AdvertService {
   }
 
   private function runDeletion(Site $site, int $advertId, array $targetSites) {
+    // Set the number of targets
+    $this->queueLogService->setTargets(sizeof($targetSites));
+
+    // Delete the advert from the target sites
     foreach ($targetSites as $targetSite) {
       try {
         $cmd = sprintf("DELETE FROM `%s`.`advert` WHERE remote_site=:site AND remote_id=:id", $targetSite->db_table);

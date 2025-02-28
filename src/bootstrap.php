@@ -3,7 +3,6 @@
 class bootstrap {
   private PDO $pdo;
   private QueueService $queueService;
-  private AdvertService $advertService;
   private array $env = [];
 
   public function __construct() {
@@ -31,12 +30,12 @@ class bootstrap {
     return $array;
   }
 
-  public function getQueueService(): QueueService {
-    return $this->queueService;
+  public function getPDO(): PDO {
+    return $this->pdo;
   }
 
-  public function getAdvertService(): AdvertService {
-    return $this->advertService;
+  public function getQueueService(): QueueService {
+    return $this->queueService;
   }
 
   private function loadEnvironmentVariables() {
@@ -65,7 +64,8 @@ class bootstrap {
   }
 
   private function initAdvertService() {
-    require_once 'advert-service.php';
-    $this->advertService = new AdvertService($this->pdo);
+    require_once 'advert-processor.php';
+    require_once 'log-service.php';
+    require_once 'queue-log-service.php';
   }
 }
