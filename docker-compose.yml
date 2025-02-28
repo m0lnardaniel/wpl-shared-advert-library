@@ -4,7 +4,7 @@ services:
     image: ghcr.io/m0lnardaniel/php-7.4-apache
     restart: always
     ports:
-      - "8040:80"
+      - "8041:80"
     volumes:
 #      - ~/Development/webplus/vendor:/var/www/vendor/
       - ./src:/var/www/html/
