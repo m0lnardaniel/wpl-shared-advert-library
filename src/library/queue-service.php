@@ -1,5 +1,10 @@
 <?php
 
+namespace SharedAdvertLibrary\Library;
+
+use PDO;
+use PDOStatement;
+
 class QueueService {
   private PDO $pdo;
   private array $config;

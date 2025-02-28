@@ -1,5 +1,10 @@
 <?php
 
+namespace SharedAdvertLibrary\Library;
+
+use Exception;
+use PDO;
+
 class AdvertProcessor {
   private PDO $pdo;
   private QueueErrorService $queueErrorService;
@@ -42,6 +47,9 @@ class AdvertProcessor {
     }
   }
 
+  /**
+   * @throws Exception
+   */
   public function findSiteByName(string $name) {
     $stmt = $this->pdo->prepare('SELECT * FROM `sites` WHERE `name` = :name AND `active` = 1');
     $stmt->execute(['name' => $name]);
@@ -52,6 +60,9 @@ class AdvertProcessor {
     return $site;
   }
 
+  /**
+   * @throws Exception
+   */
   private function runSynchronization(Advert $advert, array $targetSites) {
     // narrow down the target sites based on the group
     $targetSites = array_filter($targetSites, function ($target) use ($advert) {

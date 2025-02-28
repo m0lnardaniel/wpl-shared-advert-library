@@ -1,7 +1,13 @@
 <?php
 
+namespace SharedAdvertLibrary;
+
+use SharedAdvertLibrary\Library\AdvertProcessor;
+use SharedAdvertLibrary\Library\Bootstrap;
+use SharedAdvertLibrary\Library\QueueJob;
+
 require_once dirname(__FILE__) . '/library/bootstrap.php';
-$app = new bootstrap();
+$app = new Bootstrap();
 
 // Check if the queue is locked
 if ($app->getQueueService()->isLocked()) {

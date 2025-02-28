@@ -1,5 +1,10 @@
 <?php
 
+namespace SharedAdvertLibrary;
+
+use PDO;
+use SharedAdvertLibrary\Library\Bootstrap;
+
 require_once dirname(__FILE__) . '/library/bootstrap.php';
 $app = new bootstrap();
 

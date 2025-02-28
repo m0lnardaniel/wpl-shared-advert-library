@@ -1,5 +1,9 @@
 <?php
 
+namespace SharedAdvertLibrary\Library;
+use Exception;
+use PDO;
+
 class QueueErrorService {
   private PDO $pdo;
 

@@ -1,6 +1,11 @@
 <?php
 
-class bootstrap {
+namespace SharedAdvertLibrary\Library;
+
+use PDO;
+use PDOException;
+
+class Bootstrap {
   private PDO $pdo;
   private QueueService $queueService;
   private array $env = [];

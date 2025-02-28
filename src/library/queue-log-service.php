@@ -1,5 +1,9 @@
 <?php
 
+namespace SharedAdvertLibrary\Library;
+
+use PDO;
+
 class QueueLogService {
   private PDO $pdo;
   private QueueJob $job;

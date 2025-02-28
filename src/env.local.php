@@ -9,7 +9,7 @@ return [
     'charset' => 'utf8'
   ],
   'queue' => [
-    'batch-size' => 1,
+    'batch-size' => 100,
     'dry-run' => true
   ]
 ];
