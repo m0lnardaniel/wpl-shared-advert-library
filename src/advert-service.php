@@ -2,14 +2,23 @@
 
 class AdvertService {
   private PDO $pdo;
+  private LogService $logService;
 
   public function __construct(PDO $pdo) {
     $this->pdo = $pdo;
+
+    require_once 'log-service.php';
+    $this->logService = new LogService($pdo);
   }
 
   public function processJob(QueueJob $job): bool {
     try {
+      // Set the request for the log service
+      $this->logService->setRequest($job);
+
+      // Find the site
       $site = $this->findSiteByName($job->site_id);
+      // Find the target sites
       $targetSites = $this->getTargetSites($site);
 
       // Check if there are any target sites
@@ -27,7 +36,7 @@ class AdvertService {
 
       return true;
     } catch (Exception $e) {
-      print $e->getMessage();
+      $this->logService->add($e);
       return false;
     }
   }
@@ -86,8 +95,7 @@ class AdvertService {
           }
         }
       } catch (Exception $e) {
-        print $e->getMessage() . '<br>';
-        // TODO: Log the error
+        $this->logService->add($e);
       }
     }
   }
@@ -99,13 +107,14 @@ class AdvertService {
         $stmt = $this->pdo->prepare($cmd);
         $stmt->execute(['site' => $targetSite->name, 'id' => $advertId]);
       } catch (Exception $e) {
-        // TODO: Log the error
+        $this->logService->add($e);
       }
     }
   }
 
   private function getCollectionIdsBySite(Site $site): array {
-    $cmd = "SELECT `collection_id` FROM `site_collections` JOIN `collections` ON `collections`.`id` = `site_collections`.`collection_id` AND `collections`.`active` = 1 WHERE `site_id` = :site_id";
+    $cmd =
+      "SELECT `collection_id` FROM `site_collections` JOIN `collections` ON `collections`.`id` = `site_collections`.`collection_id` AND `collections`.`active` = 1 WHERE `site_id` = :site_id";
     $stmt = $this->pdo->prepare($cmd);
     $stmt->execute(['site_id' => $site->id]);
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
