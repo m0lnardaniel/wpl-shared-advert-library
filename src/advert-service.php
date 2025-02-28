@@ -2,8 +2,6 @@
 
 class AdvertService {
   private PDO $pdo;
-  private array $groups = ['basic', 'car', 'job', 'property'];
-  private array $categories = ['car' => 2, 'job' => 1, 'property' => 17];
 
   public function __construct(PDO $pdo) {
     $this->pdo = $pdo;
@@ -23,8 +21,8 @@ class AdvertService {
         $this->runDeletion($site, $job->advert_id, $targetSites);
       }
       else if ($job->action === 'sync') {
-        $advertData = json_decode($job->data, true);
-        $this->runSynchronization($site, $job->advert_id, $advertData, $targetSites);
+        $advert = new Advert($site, $job->advert_id, $job);
+        $this->runSynchronization($advert, $targetSites);
       }
 
       return true;
@@ -44,19 +42,10 @@ class AdvertService {
     return $site;
   }
 
-  private function runSynchronization(Site $site, int $advertId, array $data, array $targetSites) {
-    $data['advert']['remote_site'] = $site->name;
-    $data['advert']['remote_id'] = $advertId;
-    $group = $data['advert']['group'];
-
-    // Check if the group exists
-    if (!in_array($group, $this->groups)) {
-      throw new Exception('Wrong group value');
-    }
-
+  private function runSynchronization(Advert $advert, array $targetSites) {
     // narrow down the target sites based on the group
-    $targetSites = array_filter($targetSites, function ($target) use ($group) {
-      return $target->{$group};
+    $targetSites = array_filter($targetSites, function ($target) use ($advert) {
+      return $target->{$advert->group};
     });
 
     // Check if there are any target sites
@@ -64,49 +53,36 @@ class AdvertService {
       throw new Exception('No target sites found');
     }
 
-    $subCategoryId = (array_key_exists($group, $this->categories))
-      ? sprintf('1%02d%02d', $this->categories[$group], $data[$group]['category_id'])
-      : null;
-
     foreach ($targetSites as $targetSite) {
-      $advertData = $groupData = $featuresData = [];
-      $targetAdvertId = null;
       try {
-        $advertData = $data['advert'];
-        if ($targetSite->manageAllGroups()) {
-          $advertData['subcategory_id'] = $subCategoryId;
-        }
-        if (!$advertData['subcategory_id'])
-          unset($advertData['subcategory_id']);
+        // Prepare the data
+        if ($targetSite->manageAllGroups())
+          $advert->updateSubCategoryByMapping();
 
-        if (!$advertData['city_id'])
-          unset($advertData['city_id']);
-
-        if ($this->checkAdvertExistInRemote($site, $advertId, $targetSite)) {
-          $targetAdvertId = $this->findAdvertIdInRemoteTable($targetSite, $site, $advertId);
-          $this->updateItemInRemoteTable($targetSite, 'advert', $targetAdvertId, $advertData);
-          if (in_array($group, ['job', 'car', 'property'])) {
+        // Check if the advert exists in the target site
+        if ($this->checkAdvertExistInRemote($advert, $targetSite)) {
+          $targetAdvertId = $this->findAdvertIdInRemoteTable($advert, $targetSite);
+          $this->updateItemInRemoteTable($targetSite, $advert->getTableName(), $targetAdvertId, $advert->data);
+          if ($advert->isSpecialGroup()) {
             // create job, car, property item in the right table
-            $groupData = $data[$group];
-            $groupData[$group . '_id'] = $groupData['advert_id'] = $targetAdvertId;
-            $this->updateItemInRemoteTable($targetSite, $group, $targetAdvertId, $groupData);
-
+            $this->updateItemInRemoteTable($targetSite, $advert->group, $targetAdvertId,
+              $advert->getUpdatedGroupData($targetAdvertId));
             // create features
-            $featuresData = (array)$data[$group . '_features'] ?? [];
-            $this->syncFeaturesInRemoteTable($targetSite, $group, $targetAdvertId, $featuresData);
+            $this->syncFeaturesInRemoteTable($targetSite, $advert->group, $targetAdvertId, $advert->featuresData);
           }
         }
         else {
-          $targetAdvertId = $this->createItemInRemoteTable($targetSite, 'advert', $advertData);
-          if (in_array($group, ['job', 'car', 'property'])) {
-            // create job, car, property item in the right table
-            $groupData = $data[$group];
-            $groupData[$group . '_id'] = $groupData['advert_id'] = $targetAdvertId;
-            $this->createItemInRemoteTable($targetSite, $group, $groupData);
+          // Check if the advert is in progress, if so, skip
+          if ($advert->isInprogress()) {
+            continue;
+          }
 
+          $targetAdvertId = $this->createItemInRemoteTable($targetSite, $advert->getTableName(), $advert->data);
+          if ($advert->isSpecialGroup()) {
+            // create job, car, property item in the right table
+            $this->createItemInRemoteTable($targetSite, $advert->group, $advert->getUpdatedGroupData($targetAdvertId));
             // create features
-            $featuresData = (array)$data[$group . '_features'] ?? [];
-            $this->syncFeaturesInRemoteTable($targetSite, $group, $targetAdvertId, $featuresData);
+            $this->syncFeaturesInRemoteTable($targetSite, $advert->group, $targetAdvertId, $advert->featuresData);
           }
         }
       } catch (Exception $e) {
@@ -129,8 +105,8 @@ class AdvertService {
   }
 
   private function getCollectionIdsBySite(Site $site): array {
-    $stmt =
-      $this->pdo->prepare('SELECT `collection_id` FROM `site_collections` JOIN `collections` ON `collections`.`id` = `site_collections`.`collection_id` AND `collections`.`active` = 1 WHERE `site_id` = :site_id');
+    $cmd = "SELECT `collection_id` FROM `site_collections` JOIN `collections` ON `collections`.`id` = `site_collections`.`collection_id` AND `collections`.`active` = 1 WHERE `site_id` = :site_id";
+    $stmt = $this->pdo->prepare($cmd);
     $stmt->execute(['site_id' => $site->id]);
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
   }
@@ -151,16 +127,16 @@ class AdvertService {
     });
   }
 
-  private function checkAdvertExistInRemote(Site $site, int $advertId, Site $targetSite): bool {
+  private function checkAdvertExistInRemote(Advert $advert, Site $target): bool {
     $cmd = sprintf("SELECT EXISTS(SELECT 1 FROM `%s`.`advert` WHERE `remote_site`=:site AND `remote_id`=:id LIMIT 1)",
-      $targetSite->db_table);
+      $target->db_table);
     $stmt = $this->pdo->prepare($cmd);
-    $stmt->execute(['site' => $site->name, 'id' => $advertId]);
+    $stmt->execute(['site' => $advert->site->name, 'id' => $advert->id]);
     return $stmt->fetchColumn() == '1';
   }
 
-  private function createItemInRemoteTable(Site $targetSite, string $table, array $data): ?int {
-    $cmd = $this->createCommand($targetSite->db_table, $table, $data);
+  private function createItemInRemoteTable(Site $target, string $table, array $data): ?int {
+    $cmd = $this->createCommand($target->db_table, $table, $data);
     $this->pdo->prepare($cmd)
       ->execute(array_values($data));
     return $this->pdo->lastInsertId();
@@ -173,10 +149,11 @@ class AdvertService {
     return sprintf("INSERT INTO `%s`.`%s` (%s) VALUES (%s)", $dbName, $table, $columns, $placeholders);
   }
 
-  private function updateItemInRemoteTable(Site $targetSite, string $table, int $id, array $data) {
-    $cmd = $this->updateCommand($targetSite->db_table, $table, $data);
+  private function updateItemInRemoteTable(Site $target, string $table, int $id, array $data) {
+    $cmd = $this->updateCommand($target->db_table, $table, $data);
     $data['id'] = $id;
-    $this->pdo->prepare($cmd)->execute($data);
+    $this->pdo->prepare($cmd)
+      ->execute($data);
   }
 
   private function updateCommand(string $dbName, string $table, array $data) {
@@ -184,18 +161,18 @@ class AdvertService {
     return sprintf("UPDATE `%s`.`%s` SET %s WHERE `advert_id`=:id", $dbName, $table, $setPart);
   }
 
-  private function syncFeaturesInRemoteTable(Site $targetSite, string $group, int $advertId, array $features) {
+  private function syncFeaturesInRemoteTable(Site $target, string $group, int $advertId, array $features) {
     $tableName = $group . '_features';
     $pkName = $group . '_id';
 
     // Delete all features for the advert
-    $cmd = sprintf("DELETE FROM `%s`.`%s` WHERE `%s`=:id", $targetSite->db_table, $tableName, $pkName);
+    $cmd = sprintf("DELETE FROM `%s`.`%s` WHERE `%s`=:id", $target->db_table, $tableName, $pkName);
     $stmt = $this->pdo->prepare($cmd);
     $stmt->execute(['id' => $advertId]);
 
     // Insert new features
     $cmd =
-      sprintf("INSERT INTO `%s`.`%s` (`%s`, `feature_id`) VALUES (:id, :feature_id)", $targetSite->db_table, $tableName,
+      sprintf("INSERT INTO `%s`.`%s` (`%s`, `feature_id`) VALUES (:id, :feature_id)", $target->db_table, $tableName,
         $pkName);
     $stmt = $this->pdo->prepare($cmd);
     foreach ($features as $featureId) {
@@ -203,18 +180,13 @@ class AdvertService {
     }
   }
 
-  private function findAdvertIdInRemoteTable(Site $targetSite, Site $site, int $advertId): ?int {
+  private function findAdvertIdInRemoteTable(Advert $advert, Site $target): ?int {
     $cmd = sprintf("SELECT `advert_id` FROM `%s`.`advert` WHERE `remote_site`=:site AND `remote_id`=:id LIMIT 1",
-      $targetSite->db_table);
+      $target->db_table);
     $stmt = $this->pdo->prepare($cmd);
-    $stmt->execute(['site' => $site->name, 'id' => $advertId]);
+    $stmt->execute(['site' => $advert->site->name, 'id' => $advert->id]);
     return $stmt->fetchColumn();
   }
-}
-
-class Advert {
-  public Site $site;
-  public int $advertId;
 }
 
 class Site {
@@ -231,5 +203,75 @@ class Site {
 
   public function manageAllGroups() {
     return $this->basic && $this->car && $this->job && $this->property;
+  }
+}
+
+class Advert {
+  const GROUPS = ['basic', 'car', 'job', 'property'];
+  const CATEGORIES = ['car' => 2, 'job' => 1, 'property' => 17];
+  public Site $site;
+  public int $id;
+  public array $data;
+  public ?array $groupData;
+  public ?array $featuresData;
+  public string $group;
+
+  /**
+   * @throws Exception
+   */
+  public function __construct(Site $site, int $advertId, QueueJob $job) {
+    $data = json_decode($job->data, true);
+    $this->site = $site;
+    $this->id = $advertId;
+    $this->data = $data['advert'];
+    $this->data['remote_site'] = $site->name;
+    $this->data['remote_id'] = $advertId;
+    $this->group = $this->data['group'];
+
+    // Check if the group exists
+    if (!in_array($this->group, self::GROUPS)) {
+      throw new Exception('Wrong group value');
+    }
+
+    if ($this->isSpecialGroup()) {
+      $this->groupData = (array)$data[$this->group] ?? [];
+      $this->featuresData = (array)$data[$this->group . '_features'] ?? [];
+    }
+
+    // Check if the subCategoryId exists
+    if (!$this->data['subcategory_id'])
+      unset($this->data['subcategory_id']);
+
+    // Check if the cityId exists
+    if (!$this->data['city_id'])
+      unset($this->data['city_id']);
+  }
+
+  public function getTableName() {
+    return 'advert';
+  }
+
+  public function isSpecialGroup(): bool {
+    return in_array($this->group, ['job', 'car', 'property']);
+  }
+
+  public function isInprogress(): bool {
+    return $this->data['status'] === 'inprogress';
+  }
+
+  public function getUpdatedGroupData(int $targetAdvertId): array {
+    $groupData = $this->groupData;
+    $groupData[$this->group . '_id'] = $groupData['advert_id'] = $targetAdvertId;
+    return $groupData;
+  }
+
+  public function updateSubCategoryByMapping() {
+    $subCategoryId = (array_key_exists($this->group, self::CATEGORIES))
+      ? sprintf('1%02d%02d', self::CATEGORIES[$this->group], $this->groupData['category_id'])
+      : null;
+
+    if ($subCategoryId) {
+      $this->data['subcategory_id'] = $subCategoryId;
+    }
   }
 }

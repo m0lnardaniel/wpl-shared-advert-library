@@ -25,8 +25,11 @@ $statement = $app->getQueueService()
   ->getJobs();
 /** @var QueueJob $job */
 while ($job = $statement->fetch()) {
-  print_r($job);
-  $app->getAdvertService()->processJob($job);
+  $start = microtime(true);
+  for ($i = 0; $i < 400; $i++) {
+    $app->getAdvertService()->processJob($job);
+  }
+  print 'Time: ' . (microtime(true) - $start) . PHP_EOL;
 
   // Finish the job
   // $app->getQueueService()->finishJob($job);
