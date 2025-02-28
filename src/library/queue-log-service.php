@@ -28,7 +28,8 @@ class QueueLogService {
 
   public function add(string $status): void {
     $cmd =
-      'INSERT INTO `queue_logs` (`site_id`, `advert_id`, `targets`, `status`, `duration`, `created_at`, `started_at`, `finished_at`) VALUES (:site_id, :advert_id, :targets, :status, :duration, :created_at, :started_at, :finished_at)';
+      'INSERT INTO `queue_logs` (`site_id`, `advert_id`, `action`, `targets`, `status`, `duration`, `created_at`, `started_at`, `finished_at`) 
+        VALUES (:site_id, :advert_id, :action, :targets, :status, :duration, :created_at, :started_at, :finished_at)';
     $stmt = $this->pdo->prepare($cmd);
     $stmt->execute([
       'site_id' => $this->job->site_id,
