@@ -19,8 +19,7 @@ if (bm_system_url::first() == 'api')
 
 ";
 
-$stmt = $app->getPDO()
-  ->query('SELECT * FROM `sites`');
+$stmt = $app->getPDO()->query('SELECT * FROM `sites`');
 $stmt->setFetchMode(PDO::FETCH_OBJ);
 
 while ($site = $stmt->fetch()) {
@@ -38,8 +37,8 @@ while ($site = $stmt->fetch()) {
   $indexFile = $sitePath . '/index.php';
   printMsg(file_exists($indexFile), 'index', 'index');
   if (file_exists($indexFile)) {
-    //    $index = file_get_contents($indexFile);
-    //    file_put_contents($indexFile, str_replace($indexReplacement, "", $index));
+    $index = file_get_contents($indexFile);
+    file_put_contents($indexFile, str_replace($indexReplacement, "", $index));
   }
 
   /*
@@ -48,7 +47,7 @@ while ($site = $stmt->fetch()) {
   $apiFile = $sitePath . '/plugins/advert/api.php';
   printMsg(file_exists($apiFile), 'api', 'api');
   if (file_exists($apiFile)) {
-    //    printMsg(copy($newApiFile, $apiFile), 'copy', 'copy');
+    printMsg(copy($newApiFile, $apiFile), 'copy', 'copy');
   }
 
   /*
@@ -58,9 +57,9 @@ while ($site = $stmt->fetch()) {
   printMsg(file_exists($cfgFile), 'config', 'config');
 
   if (file_exists($apiFile)) {
-    //    $cfg = file_get_contents($cfgFile);
-    //    $cfgResponse = file_put_contents($cfgFile, preg_replace($cfgPattern, $cfgReplacement, $cfg));
-    //    printMsg($cfgResponse !== false, 'replace', 'replace');
+    $cfg = file_get_contents($cfgFile);
+    $cfgResponse = file_put_contents($cfgFile, preg_replace($cfgPattern, $cfgReplacement, $cfg));
+    printMsg($cfgResponse !== false, 'replace', 'replace');
   }
 
   /*
@@ -70,9 +69,9 @@ while ($site = $stmt->fetch()) {
   printMsg(file_exists($applicationFile), 'application', 'application');
 
   if (file_exists($apiFile)) {
-    //    $application = file_get_contents($applicationFile);
-    //    $applicationResponse = file_put_contents($applicationFile, preg_replace($cfgPattern, "", $application));
-    //    printMsg($applicationResponse !== false, 'replace', 'replace');
+    $application = file_get_contents($applicationFile);
+    $applicationResponse = file_put_contents($applicationFile, preg_replace($cfgPattern, "", $application));
+    printMsg($applicationResponse !== false, 'replace', 'replace');
   }
 
 
@@ -83,22 +82,22 @@ while ($site = $stmt->fetch()) {
   printMsg(file_exists($sitesFolder), 'sites', 'sites');
 
   if (file_exists($sitesFolder)) {
-    //    $sitesFolders = array_filter(scandir($sitesFolder), function ($item) use ($sitesFolder) {
-    //      return is_dir($sitesFolder . DIRECTORY_SEPARATOR . $item) && !in_array($item, ['.', '..', 'admin']);
-    //    });
-    //
-    //    foreach ($sitesFolders as $folder) {
-    //      $folderPath = $sitesFolder . DIRECTORY_SEPARATOR . $folder . '/api';
-    //      if (file_exists($folderPath) && file_exists($folderPath . '/delete.php') &&
-    //        file_exists($folderPath . '/import.php') && file_exists($folderPath . '/save-images.php')) {
-    //        printMsg(true, $folder, $folder);
-    //        unlink($folderPath . '/delete.php');
-    //        unlink($folderPath . '/import.php');
-    //        unlink($folderPath . '/save-images.php');
-    //        unlink($folderPath . '/_info.php');
-    //        printMsg(rmdir($folderPath), 'remove', 'remove');
-    //      }
-    //    }
+    $sitesFolders = array_filter(scandir($sitesFolder), function ($item) use ($sitesFolder) {
+      return is_dir($sitesFolder . DIRECTORY_SEPARATOR . $item) && !in_array($item, ['.', '..', 'admin']);
+    });
+
+    foreach ($sitesFolders as $folder) {
+      $folderPath = $sitesFolder . DIRECTORY_SEPARATOR . $folder . '/api';
+      if (file_exists($folderPath) && file_exists($folderPath . '/delete.php') &&
+        file_exists($folderPath . '/import.php') && file_exists($folderPath . '/save-images.php')) {
+        printMsg(true, $folder, $folder);
+        unlink($folderPath . '/delete.php');
+        unlink($folderPath . '/import.php');
+        unlink($folderPath . '/save-images.php');
+        unlink($folderPath . '/_info.php');
+        printMsg(rmdir($folderPath), 'remove', 'remove');
+      }
+    }
   }
   print '<br/>';
 }

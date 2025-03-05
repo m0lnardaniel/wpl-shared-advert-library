@@ -3,7 +3,6 @@
 namespace SharedAdvertLibrary\Library;
 
 use PDO;
-use PDOException;
 
 class Bootstrap {
   private PDO $pdo;
@@ -50,19 +49,15 @@ class Bootstrap {
   }
 
   private function initDatabase() {
-    try {
-      $dsn = sprintf("mysql:host=%s;dbname=%s;charset=%s", $this->env('database.host'), $this->env('database.database'),
-        $this->env('database.charset'));
-      $username = $this->env('database.username');
-      $password = $this->env('database.password');
-      $this->pdo = new PDO($dsn, $username, $password, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
-        PDO::ATTR_EMULATE_PREPARES => false
-      ]);
-    } catch (PDOException $e) {
-      die("Connection error: " . $e->getMessage());
-    }
+    $dsn = sprintf("mysql:host=%s;dbname=%s;charset=%s", $this->env('database.host'), $this->env('database.database'),
+      $this->env('database.charset'));
+    $username = $this->env('database.username');
+    $password = $this->env('database.password');
+    $this->pdo = new PDO($dsn, $username, $password, [
+      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+      PDO::ATTR_EMULATE_PREPARES => false
+    ]);
   }
 
   private function initQueueService() {
