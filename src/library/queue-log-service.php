@@ -10,6 +10,8 @@ class QueueLogService {
   private int $startedAtMicrotime;
   private string $startedAt;
   private int $targets = 0;
+  private int $succeeded = 0;
+  private int $failed = 0;
 
   public function __construct(PDO $pdo, QueueJob $job) {
     $this->pdo = $pdo;
@@ -30,16 +32,26 @@ class QueueLogService {
     $this->add('successful');
   }
 
+  public function increaseSucceeded() {
+    $this->succeeded++;
+  }
+
+  public function increaseFailed() {
+    $this->failed++;
+  }
+
   public function add(string $status): void {
     $cmd =
-      'INSERT INTO `queue_logs` (`site_id`, `advert_id`, `action`, `targets`, `status`, `duration`, `created_at`, `started_at`, `finished_at`) 
-        VALUES (:site_id, :advert_id, :action, :targets, :status, :duration, :created_at, :started_at, :finished_at)';
+      'INSERT INTO `queue_logs` (`site_id`, `advert_id`, `action`, `targets`, `succeeded`, `failed`, `status`, `duration`, `created_at`, `started_at`, `finished_at`) 
+        VALUES (:site_id, :advert_id, :action, :targets, :succeeded, :failed, :status, :duration, :created_at, :started_at, :finished_at)';
     $stmt = $this->pdo->prepare($cmd);
     $stmt->execute([
       'site_id' => $this->job->site_id,
       'advert_id' => $this->job->advert_id,
       'action' => $this->job->action,
       'targets' => $this->targets,
+      'succeeded' => $this->succeeded,
+      'failed' => $this->failed,
       'status' => $status,
       'duration' => microtime(true) - $this->startedAtMicrotime,
       'created_at' => $this->job->created_at,

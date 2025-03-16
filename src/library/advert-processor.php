@@ -99,6 +99,7 @@ class AdvertProcessor {
         else {
           // Check if the advert is in progress, if so, skip
           if ($advert->isInprogress()) {
+            $this->queueLogService->increaseSucceeded();
             continue;
           }
 
@@ -110,7 +111,9 @@ class AdvertProcessor {
             $this->syncFeaturesInRemoteTable($targetSite, $advert->group, $targetAdvertId, $advert->featuresData);
           }
         }
+        $this->queueLogService->increaseSucceeded();
       } catch (Exception $e) {
+        $this->queueLogService->increaseFailed();
         $this->queueErrorService->add($e);
       }
     }
@@ -126,7 +129,9 @@ class AdvertProcessor {
         $cmd = sprintf("DELETE FROM `%s`.`advert` WHERE `remote_site`=:site AND `remote_id`=:id", $targetSite->db_table);
         $stmt = $this->pdo->prepare($cmd);
         $stmt->execute(['site' => $site->name, 'id' => $advertId]);
+        $this->queueLogService->increaseSucceeded();
       } catch (Exception $e) {
+        $this->queueLogService->increaseFailed();
         $this->queueErrorService->add($e);
       }
     }
