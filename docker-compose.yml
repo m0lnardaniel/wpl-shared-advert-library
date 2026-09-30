@@ -3,39 +3,41 @@ services:
     container_name: wpl-shared-advert-library-php
     image: ghcr.io/m0lnardaniel/php-7.4-apache
     ports:
-      - "8040:80"
+      - "${HTTP_PORT:-8040}:80"
     volumes:
-      - ./src:/var/www/html/
-      - ./src/env.local.php:/var/www/html/env.php
-      - ./docker/php.ini:/usr/local/etc/php/php.ini
-    links:
-      - mysql
+      - ./src:/var/www/html
+      - ./src/env.local.php:/var/www/html/env.php:ro
+      - ./docker/php.ini:/usr/local/etc/php/php.ini:ro
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     networks:
       - webplus
 
   mysql:
     container_name: wpl-shared-advert-library-mysql
-    image: mariadb:latest
+    image: mariadb:12.3
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-3306}:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=app
-      - MYSQL_DATABASE=app
-      - MYSQL_USER=app
-      - MYSQL_PASSWORD=app
+      MARIADB_ROOT_PASSWORD: app
+      MARIADB_DATABASE: app
+      MARIADB_USER: app
+      MARIADB_PASSWORD: app
     volumes:
       - ./data/mysql:/var/lib/mysql
-      - ./docker/mysql.cnf:/etc/mysql/conf.d/mysql.cnf
       - ./data/dump:/docker-entrypoint-initdb.d:ro
+      - ./docker/mysql.cnf:/etc/mysql/conf.d/mysql.cnf:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5m
+      start_interval: 2s
     networks:
       - webplus
 
 networks:
   webplus:
     name: webplus
-    external: false
-  tauri:
-    name: tauri
-    external: true
