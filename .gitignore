@@ -2,3 +2,5 @@
 src/env.php
 src/env.prod.php
 test/
+/data/mysql/*
+!/data/mysql/.gitkeep

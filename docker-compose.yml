@@ -26,9 +26,9 @@ services:
       - MYSQL_USER=app
       - MYSQL_PASSWORD=app
     volumes:
-      - ~/Development/.databases/wpl-shared-advert-library:/var/www/database
+      - ./data/mysql:/var/lib/mysql
       - ./docker/mysql.cnf:/etc/mysql/conf.d/mysql.cnf
-      - ./db/mysqldump.sql:/docker-entrypoint-initdb.d/mysqldump.sql
+      - ./data/dump:/docker-entrypoint-initdb.d:ro
     networks:
       - webplus
 
